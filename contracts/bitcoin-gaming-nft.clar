@@ -224,3 +224,26 @@
     true
   )
 )
+
+;; Run initialization on contract deploy
+(initialize)
+
+;; Implement NFT trait requirements
+(define-read-only (get-last-token-id)
+  (ok (var-get last-token-id))
+)
+
+(define-read-only (get-token-uri (token-id uint))
+  (ok 
+    (some 
+      (concat 
+        "https://bitcoin-gaming-nft.com/metadata/" 
+        (int-to-ascii token-id)
+      )
+    )
+  )
+)
+
+(define-read-only (get-owner (token-id uint))
+  (ok (nft-get-owner? game-asset token-id))
+)
