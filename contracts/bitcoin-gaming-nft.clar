@@ -46,3 +46,48 @@
     total-rewards-earned: uint
   }
 )
+
+;; Reward pool management
+(define-data-var total-reward-pool uint u0)
+(define-data-var reward-per-point uint u10)  ;; 10 sats per point as default
+
+;; Mint a new game NFT
+(define-public (mint-game-nft 
+  (name (string-ascii 50))
+  (description (string-ascii 200))
+  (rarity (string-ascii 20))
+  (game-type (string-ascii 50))
+)
+  (let 
+    (
+      (token-id (+ (var-get last-token-id) u1))
+    )
+    ;; Ensure only contract owner can mint initially
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+    
+    ;; Validate input parameters
+    (asserts! (> (len name) u0) ERR-INVALID-PARAMETERS)
+    (asserts! (> (len description) u0) ERR-INVALID-PARAMETERS)
+    
+    ;; Mint the NFT
+    (try! (nft-mint? game-asset token-id tx-sender))
+    
+    ;; Store metadata
+    (map-set nft-metadata 
+      {token-id: token-id}
+      {
+        name: name,
+        description: description,
+        rarity: rarity,
+        game-type: game-type,
+        minted-at: block-height
+      }
+    )
+    
+    ;; Update last token ID
+    (var-set last-token-id token-id)
+    
+    ;; Return the new token ID
+    (ok token-id)
+  )
+)
