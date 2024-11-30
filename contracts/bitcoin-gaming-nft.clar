@@ -151,3 +151,40 @@
     (ok new-total-score)
   )
 )
+
+;; Distribute Bitcoin rewards
+(define-public (distribute-bitcoin-rewards 
+  (player principal)
+)
+  (let 
+    (
+      (player-score 
+        (unwrap! 
+          (map-get? player-scores {player: player}) 
+          ERR-NFT-NOT-FOUND
+        )
+      )
+      (total-reward (get total-rewards-earned player-score))
+    )
+    ;; Ensure only contract owner can distribute
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+    
+    ;; Ensure sufficient reward pool
+    (asserts! (>= (var-get total-reward-pool) total-reward) ERR-INSUFFICIENT-FUNDS)
+    
+    ;; Simulate Bitcoin reward transfer (actual implementation would use BTC transfer mechanism)
+    (var-set total-reward-pool (- (var-get total-reward-pool) total-reward))
+    
+    ;; Reset player rewards after distribution
+    (map-set player-scores 
+      {player: player}
+      {
+        total-score: (get total-score player-score),
+        last-updated: block-height,
+        total-rewards-earned: u0
+      }
+    )
+    
+    (ok total-reward)
+  )
+)
