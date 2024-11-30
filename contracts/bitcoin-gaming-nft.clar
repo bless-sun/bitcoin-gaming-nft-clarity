@@ -114,3 +114,40 @@
     owner (is-eq user owner)
     false)
 )
+
+;; Get NFT metadata
+(define-read-only (get-nft-metadata (token-id uint))
+  (map-get? nft-metadata {token-id: token-id})
+)
+
+;; Record player score
+(define-public (record-player-score 
+  (player principal)
+  (score uint)
+)
+  (let 
+    (
+      (current-score 
+        (default-to 
+          {total-score: u0, last-updated: u0, total-rewards-earned: u0}
+          (map-get? player-scores {player: player})
+        )
+      )
+      (new-total-score (+ (get total-score current-score) score))
+    )
+    ;; Ensure only contract can call this
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+    
+    ;; Update player scores
+    (map-set player-scores 
+      {player: player}
+      {
+        total-score: new-total-score,
+        last-updated: block-height,
+        total-rewards-earned: (+ (get total-rewards-earned current-score) (* score (var-get reward-per-point)))
+      }
+    )
+    
+    (ok new-total-score)
+  )
+)
