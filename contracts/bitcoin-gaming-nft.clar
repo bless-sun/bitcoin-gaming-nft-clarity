@@ -91,3 +91,16 @@
     (ok token-id)
   )
 )
+
+;; Transfer an NFT
+(define-public (transfer 
+  (token-id uint)
+  (sender principal)
+  (recipient principal)
+)
+  (begin
+    (asserts! (is-owner token-id sender) ERR-NOT-AUTHORIZED)
+    (try! (nft-transfer? game-asset token-id sender recipient))
+    (ok true)
+  )
+)
