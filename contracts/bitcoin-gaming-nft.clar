@@ -12,3 +12,21 @@
 (define-constant ERR-INSUFFICIENT-FUNDS (err u104))
 (define-constant ERR-TRANSFER-FAILED (err u105))
 (define-constant ERR-REWARD-DISTRIBUTION-FAILED (err u106))
+
+;; Contract owner
+(define-data-var contract-owner principal tx-sender)
+
+;; NFT collection name
+(define-data-var collection-name (string-ascii 32) "Bitcoin Gaming NFTs")
+
+;; Storing game metadata
+(define-map nft-metadata 
+  {token-id: uint}
+  {
+    name: (string-ascii 50),
+    description: (string-ascii 200),
+    rarity: (string-ascii 20),
+    game-type: (string-ascii 50),
+    minted-at: uint
+  }
+)
