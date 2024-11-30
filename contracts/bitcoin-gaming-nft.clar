@@ -188,3 +188,17 @@
     (ok total-reward)
   )
 )
+
+;; Add funds to reward pool
+(define-public (add-to-reward-pool (amount uint))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+    (var-set total-reward-pool (+ (var-get total-reward-pool) amount))
+    (ok true)
+  )
+)
+
+;; Get current reward pool balance
+(define-read-only (get-reward-pool-balance)
+  (var-get total-reward-pool)
+)
