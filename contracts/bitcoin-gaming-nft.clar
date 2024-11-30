@@ -30,3 +30,19 @@
     minted-at: uint
   }
 )
+
+;; NFT registry
+(define-non-fungible-token game-asset uint)
+
+;; Token counter to generate unique IDs
+(define-data-var last-token-id uint u0)
+
+;; Leaderboard tracking
+(define-map player-scores 
+  {player: principal}
+  {
+    total-score: uint,
+    last-updated: uint,
+    total-rewards-earned: uint
+  }
+)
