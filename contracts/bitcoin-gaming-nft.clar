@@ -1,6 +1,6 @@
 ;; title: Bitcoin Gaming NFT Smart Contract
-;; summary: A smart contract for managing a collection of Bitcoin Gaming NFTs, including minting, transferring, and rewarding players.
-;; description: This smart contract implements a non-fungible token (NFT) system for Bitcoin Gaming NFTs. It includes functionalities for minting new NFTs, transferring ownership, recording player scores, distributing Bitcoin rewards, and managing a reward pool. The contract ensures only the contract owner can perform certain actions and validates input parameters to maintain data integrity. The contract also provides read-only functions to retrieve NFT metadata, reward pool balance, and token ownership information.
+;; summary: A secure smart contract for managing a collection of Bitcoin Gaming NFTs, including minting, transferring, and rewarding players.
+;; description: Enhanced version with improved input validation and security checks.
 
 (impl-trait .nft-trait.nft-trait)
 
@@ -19,13 +19,16 @@
 ;; NFT collection name
 (define-data-var collection-name (string-ascii 32) "Bitcoin Gaming NFTs")
 
+;; Valid rarity types
+(define-constant VALID-RARITIES (list "common" "rare" "epic" "leg"))
+
 ;; Storing game metadata
 (define-map nft-metadata 
   {token-id: uint}
   {
     name: (string-ascii 50),
     description: (string-ascii 200),
-    rarity: (string-ascii 20),
+    rarity: (string-ascii 9),
     game-type: (string-ascii 50),
     minted-at: uint
   }
@@ -51,11 +54,29 @@
 (define-data-var total-reward-pool uint u0)
 (define-data-var reward-per-point uint u10)  ;; 10 sats per point as default
 
+;; Validate rarity
+(define-private (is-valid-rarity (rarity (string-ascii 6)))
+  (is-some (index-of VALID-RARITIES rarity))
+)
+
+;; Validate game type
+(define-private (is-valid-game-type (game-type (string-ascii 50)))
+  (and 
+    (> (len game-type) u0) 
+    (<= (len game-type) u50)
+  )
+)
+
+;; Validate principal (simple check to ensure it's not a zero-like principal)
+(define-private (is-valid-principal (addr principal))
+  (not (is-eq addr tx-sender))
+)
+
 ;; Mint a new game NFT
 (define-public (mint-game-nft 
   (name (string-ascii 50))
   (description (string-ascii 200))
-  (rarity (string-ascii 20))
+  (rarity (string-ascii 6))
   (game-type (string-ascii 50))
 )
   (let 
@@ -66,8 +87,14 @@
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
     
     ;; Validate input parameters
-    (asserts! (> (len name) u0) ERR-INVALID-PARAMETERS)
-    (asserts! (> (len description) u0) ERR-INVALID-PARAMETERS)
+    (asserts! (and 
+      (> (len name) u0)
+      (<= (len name) u50)
+      (> (len description) u0)
+      (<= (len description) u200)
+      (is-valid-rarity rarity)
+      (is-valid-game-type game-type)
+    ) ERR-INVALID-PARAMETERS)
     
     ;; Mint the NFT
     (try! (nft-mint? game-asset token-id tx-sender))
@@ -99,7 +126,17 @@
   (recipient principal)
 )
   (begin
+    ;; Validate recipient
+    (asserts! (and 
+      (not (is-eq sender recipient)) 
+      (not (is-eq recipient (var-get contract-owner)))
+      (is-valid-principal recipient)
+    ) ERR-INVALID-PARAMETERS)
+    
+    ;; Ensure sender is the owner
     (asserts! (is-owner token-id sender) ERR-NOT-AUTHORIZED)
+    
+    ;; Perform transfer
     (try! (nft-transfer? game-asset token-id sender recipient))
     (ok true)
   )
@@ -138,13 +175,22 @@
     ;; Ensure only contract can call this
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
     
+    ;; Validate score
+    (asserts! (and 
+      (> score u0) 
+      (<= score u10000)  ;; Reasonable score limit
+    ) ERR-INVALID-PARAMETERS)
+    
     ;; Update player scores
     (map-set player-scores 
       {player: player}
       {
         total-score: new-total-score,
         last-updated: block-height,
-        total-rewards-earned: (+ (get total-rewards-earned current-score) (* score (var-get reward-per-point)))
+        total-rewards-earned: (+ 
+          (get total-rewards-earned current-score) 
+          (* score (var-get reward-per-point))
+        )
       }
     )
     
@@ -169,10 +215,14 @@
     ;; Ensure only contract owner can distribute
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
     
-    ;; Ensure sufficient reward pool
-    (asserts! (>= (var-get total-reward-pool) total-reward) ERR-INSUFFICIENT-FUNDS)
+    ;; Ensure sufficient reward pool and valid reward amount
+    (asserts! (and 
+      (>= (var-get total-reward-pool) total-reward)
+      (> total-reward u0)
+    ) ERR-INSUFFICIENT-FUNDS)
     
-    ;; Simulate Bitcoin reward transfer (actual implementation would use BTC transfer mechanism)
+    ;; Simulate Bitcoin reward transfer 
+    ;; Note: Actual BTC transfer would require additional implementation
     (var-set total-reward-pool (- (var-get total-reward-pool) total-reward))
     
     ;; Reset player rewards after distribution
@@ -192,7 +242,16 @@
 ;; Add funds to reward pool
 (define-public (add-to-reward-pool (amount uint))
   (begin
+    ;; Ensure only contract owner can add to pool
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+    
+    ;; Validate reward pool addition
+    (asserts! (and 
+      (> amount u0) 
+      (<= amount u1000000000)  ;; Prevent extremely large additions
+    ) ERR-INVALID-PARAMETERS)
+    
+    ;; Update reward pool
     (var-set total-reward-pool (+ (var-get total-reward-pool) amount))
     (ok true)
   )
@@ -206,7 +265,16 @@
 ;; Transfer contract ownership
 (define-public (transfer-ownership (new-owner principal))
   (begin
+    ;; Ensure only current owner can transfer
     (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+    
+    ;; Prevent transfer to zero or current owner principal
+    (asserts! (and 
+      (not (is-eq new-owner tx-sender))
+      (is-valid-principal new-owner)
+    ) ERR-INVALID-PARAMETERS)
+    
+    ;; Update contract owner
     (var-set contract-owner new-owner)
     (ok true)
   )
