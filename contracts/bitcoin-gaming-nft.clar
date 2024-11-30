@@ -1,6 +1,6 @@
-;; title: Bitcoin Gaming NFT Smart Contract
-;; summary: A secure smart contract for managing a collection of Bitcoin Gaming NFTs, including minting, transferring, and rewarding players.
-;; description: Enhanced version with improved input validation and security checks.
+;; title: NFT Trait Definition
+;; summary: Defines the standard trait for Non-Fungible Tokens (NFTs) in Clarity.
+;; description: This trait outlines the essential functions required for an NFT contract, including retrieving the last used token ID, fetching the URI for a specific token, and getting the owner of a specific token.
 
 (impl-trait .nft-trait.nft-trait)
 
@@ -20,7 +20,7 @@
 (define-data-var collection-name (string-ascii 32) "Bitcoin Gaming NFTs")
 
 ;; Valid rarity types
-(define-constant VALID-RARITIES (list "common" "rare" "epic" "leg"))
+(define-constant VALID-RARITIES (list "common" "rare" "epic" "legendary"))
 
 ;; Storing game metadata
 (define-map nft-metadata 
