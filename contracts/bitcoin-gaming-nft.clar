@@ -202,3 +202,25 @@
 (define-read-only (get-reward-pool-balance)
   (var-get total-reward-pool)
 )
+
+;; Transfer contract ownership
+(define-public (transfer-ownership (new-owner principal))
+  (begin
+    (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+    (var-set contract-owner new-owner)
+    (ok true)
+  )
+)
+
+;; Initialize contract
+(define-private (initialize)
+  (begin
+    ;; Set initial reward per point
+    (var-set reward-per-point u10)
+    
+    ;; Set initial reward pool
+    (var-set total-reward-pool u1000000)  ;; 1 million sats initial pool
+    
+    true
+  )
+)
