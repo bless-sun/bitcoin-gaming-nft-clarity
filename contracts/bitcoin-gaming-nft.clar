@@ -104,3 +104,13 @@
     (ok true)
   )
 )
+
+;; Check if a principal is the owner of a specific NFT
+(define-private (is-owner 
+  (token-id uint)
+  (user principal)
+)
+  (match (nft-get-owner? game-asset token-id)
+    owner (is-eq user owner)
+    false)
+)
